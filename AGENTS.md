@@ -16,6 +16,7 @@ Before changing code or documentation, read:
 - `docs/PROJECT_CONSTITUTION.md`
 - `docs/product/mvp-scope.md`
 - Relevant files under `docs/domain/`, `docs/architecture/`, and `docs/decisions/`
+- `docs/engineering/git-workflow.md`
 
 ## MVP scope
 
@@ -89,3 +90,49 @@ After implementation:
 - Work from a focused branch.
 - Keep commits small, atomic, and descriptive.
 - Open a pull request for review before merge.
+- Preserve meaningful commits by using a normal merge commit unless the maintainer explicitly chooses another strategy.
+
+## Semantic commit conventions
+
+Use the format:
+
+```text
+<type>(optional-scope): concise imperative summary
+```
+
+Allowed commit types:
+
+- `feat`: new user-facing capability
+- `fix`: bug fix
+- `docs`: documentation-only change
+- `test`: test-only change
+- `refactor`: internal restructuring without behavior change
+- `perf`: performance improvement
+- `style`: formatting or style-only change
+- `build`: build system or dependency change
+- `ci`: continuous integration change
+- `infra`: deployment or infrastructure change
+- `db`: database schema or migration change
+- `chore`: repository maintenance that fits no better type
+- `revert`: revert a previous commit
+
+Examples:
+
+```text
+docs: define MVP scope
+feat(observations): add photo upload endpoint
+fix(privacy): prevent exact coordinates in public response
+test(identifications): cover withdrawal history
+db(taxonomy): add common names table
+ci: run backend tests on pull requests
+```
+
+Rules:
+
+- Use lowercase types and scopes.
+- Use imperative mood: `add`, `prevent`, `define`, not `added` or `adds`.
+- Keep the first line concise and avoid a trailing period.
+- One commit should represent one coherent change.
+- Do not mix unrelated refactoring with feature work.
+- Add a body when the reason, migration impact, or trade-off is not obvious.
+- Use `BREAKING CHANGE:` in the footer only when a change intentionally breaks an existing contract.
