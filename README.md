@@ -47,11 +47,27 @@ Before contributing, read:
 
 The repository is designed for both human contributors and AI coding agents. Product boundaries, domain rules, architecture decisions, and implementation expectations are version controlled alongside the code.
 
+## Local development
+
+Fastest startup path:
+
+```bash
+cp .env.example .env
+docker compose --env-file .env up --build -d
+```
+
+Then open:
+
+- Frontend: `http://localhost:5173`
+- Backend health: `http://localhost:8000/api/v1/health`
+
+Full setup, non-Docker commands, checks, migrations, and troubleshooting are documented in [docs/development/local-development.md](docs/development/local-development.md).
+
 ## Current status
 
-**Sprint 0 — Knowledge Base and Governance**
+**Sprint 1 — Repository Technical Foundation**
 
-Application code has not started yet. The current work establishes the product, scientific, privacy, architecture, and AI collaboration rules that will guide implementation.
+The repository now contains the technical foundation for local development: a minimal FastAPI backend, React frontend, PostgreSQL with PostGIS, Docker Compose, Alembic, and quality tooling. TrackSea product features have not started yet.
 
 ## Guiding principle
 
