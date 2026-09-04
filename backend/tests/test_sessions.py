@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 from sqlalchemy import event
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
@@ -30,6 +30,7 @@ from app.users.models import User
 from app.users.schemas import UserResponse
 
 NOW = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
+TEST_CSRF_SECRET = SecretStr("test-csrf-secret-with-at-least-32-bytes")
 
 
 @pytest.fixture
@@ -330,6 +331,7 @@ def test_production_session_cookie_attributes() -> None:
         environment="production",
         session_cookie_secure=True,
         session_cookie_name=None,
+        csrf_secret=TEST_CSRF_SECRET,
     )
     response = Response()
 
@@ -355,6 +357,7 @@ def test_clearing_session_cookie_preserves_matching_policy(secure: bool) -> None
         environment="production" if secure else "local",
         session_cookie_secure=secure,
         session_cookie_name="__Host-tracksea_session" if secure else "tracksea_session",
+        csrf_secret=TEST_CSRF_SECRET,
     )
     response = Response()
 

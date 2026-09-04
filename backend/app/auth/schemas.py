@@ -29,3 +29,11 @@ class AuthErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     detail: AuthErrorDetail
+
+
+class CsrfResponse(BaseModel):
+    """The readable token returned by the CSRF bootstrap endpoint."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    csrf_token: str
