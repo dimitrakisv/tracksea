@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session as DbSession
 import app.auth.service as auth_service
 from app.auth.csrf import CsrfValidationError, validate_csrf_token
 from app.auth.dependencies import AuthenticatedUser, require_current_user
-from app.auth.models import Session
+from app.auth.models import AuthThrottleBucket, Session
 from app.auth.passwords import (
     hash_password,
     verify_and_update_password,
@@ -72,7 +72,9 @@ def anyio_backend() -> str:
 
 @pytest.fixture
 def auth_settings() -> Settings:
-    return Settings()
+    return Settings(
+        auth_throttle_secret=SecretStr(f"step10-test-throttle-secret-{uuid4().hex}")
+    )
 
 
 @pytest.fixture
@@ -89,12 +91,19 @@ def auth_engine(auth_settings: Settings) -> Generator[Engine, None, None]:
         engine.dispose()
         pytest.fail("Local PostgreSQL must be available for login/logout tests.")
 
+    with DbSession(engine) as db:
+        baseline_throttle_ids = set(db.scalars(select(AuthThrottleBucket.id)))
+
     yield engine
 
     with DbSession(engine) as db:
         db.execute(
             delete(User).where(User.normalized_email.like(f"{TEST_EMAIL_PREFIX}%"))
         )
+        cleanup = delete(AuthThrottleBucket)
+        if baseline_throttle_ids:
+            cleanup = cleanup.where(AuthThrottleBucket.id.not_in(baseline_throttle_ids))
+        db.execute(cleanup)
         db.commit()
     engine.dispose()
 

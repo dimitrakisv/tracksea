@@ -22,6 +22,7 @@ from app.auth.service import (
     logout_session,
     register_user,
 )
+from app.auth.throttling import LoginRateLimitedError
 from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.users.schemas import UserResponse
@@ -85,16 +86,36 @@ def register(
     "/login",
     response_model=UserResponse,
     dependencies=[Depends(require_csrf)],
-    responses={status.HTTP_401_UNAUTHORIZED: {"model": AuthErrorResponse}},
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": AuthErrorResponse},
+        status.HTTP_429_TOO_MANY_REQUESTS: {"model": AuthErrorResponse},
+    },
 )
 def login(
     login_request: LoginRequest,
+    request: Request,
     response: Response,
     db: Annotated[DbSession, Depends(get_db_session)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> UserResponse:
     try:
-        result = login_user(db, login_request, settings=settings)
+        direct_client_host = request.client.host if request.client is not None else None
+        result = login_user(
+            db,
+            login_request,
+            settings=settings,
+            direct_client_host=direct_client_host,
+        )
+    except LoginRateLimitedError as error:
+        detail = AuthErrorDetail(
+            code=AuthErrorCode.RATE_LIMITED,
+            message="Too many sign-in attempts. Try again later.",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=detail.model_dump(mode="json"),
+            headers={"Retry-After": str(error.retry_after_seconds)},
+        ) from None
     except InvalidCredentialsError:
         detail = AuthErrorDetail(
             code=AuthErrorCode.INVALID_CREDENTIALS,

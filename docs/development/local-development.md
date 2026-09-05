@@ -98,7 +98,7 @@ uv sync --locked
 Run the backend against the Docker PostgreSQL service exposed on the host:
 
 ```bash
-DATABASE_URL=postgresql+psycopg://tracksea:tracksea_dev_password@127.0.0.1:5432/tracksea uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+DATABASE_URL=postgresql+psycopg://tracksea:tracksea_dev_password@127.0.0.1:5432/tracksea uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-proxy-headers
 ```
 
 Check the health endpoint:

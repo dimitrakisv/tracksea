@@ -31,6 +31,9 @@ from app.users.schemas import UserResponse
 
 NOW = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
 TEST_CSRF_SECRET = SecretStr("test-csrf-secret-with-at-least-32-bytes")
+TEST_AUTH_THROTTLE_SECRET = SecretStr(
+    "test-auth-throttle-secret-with-at-least-32-bytes"
+)
 
 
 @pytest.fixture
@@ -332,6 +335,7 @@ def test_production_session_cookie_attributes() -> None:
         session_cookie_secure=True,
         session_cookie_name=None,
         csrf_secret=TEST_CSRF_SECRET,
+        auth_throttle_secret=TEST_AUTH_THROTTLE_SECRET,
     )
     response = Response()
 
@@ -358,6 +362,7 @@ def test_clearing_session_cookie_preserves_matching_policy(secure: bool) -> None
         session_cookie_secure=secure,
         session_cookie_name="__Host-tracksea_session" if secure else "tracksea_session",
         csrf_secret=TEST_CSRF_SECRET,
+        auth_throttle_secret=TEST_AUTH_THROTTLE_SECRET,
     )
     response = Response()
 

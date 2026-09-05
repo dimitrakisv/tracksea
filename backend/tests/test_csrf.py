@@ -23,6 +23,7 @@ from app.core.config import DEVELOPMENT_CSRF_SECRET, Settings, get_settings
 from app.main import create_app
 
 TEST_SECRET = "test-csrf-secret-with-at-least-32-bytes"
+TEST_AUTH_THROTTLE_SECRET = "test-auth-throttle-secret-with-at-least-32-bytes"
 NOW = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
 TOKEN_PATTERN = re.compile(r"^v1\.\d+\.\d+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$")
 
@@ -35,6 +36,7 @@ def anyio_backend() -> str:
 def make_settings(**overrides: object) -> Settings:
     values: dict[str, object] = {
         "csrf_secret": TEST_SECRET,
+        "auth_throttle_secret": TEST_AUTH_THROTTLE_SECRET,
         "frontend_origin": "http://localhost:5173",
         "session_cookie_secure": False,
     }

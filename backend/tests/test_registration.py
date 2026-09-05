@@ -30,6 +30,9 @@ from app.users.service import MAX_DISPLAY_NAME_LENGTH
 TEST_EMAIL_PREFIX = "step9-registration-"
 VALID_PASSWORD = "a private ocean passphrase"
 TEST_CSRF_SECRET = SecretStr("test-csrf-secret-with-at-least-32-bytes")
+TEST_AUTH_THROTTLE_SECRET = SecretStr(
+    "test-auth-throttle-secret-with-at-least-32-bytes"
+)
 CONFLICT_DETAIL = {
     "code": "account_conflict",
     "message": "An account cannot be created with these details.",
@@ -318,6 +321,7 @@ async def test_registration_uses_secure_host_cookies_outside_local_http(
         environment="production",
         frontend_origin=AnyHttpUrl("https://tracksea.example"),
         csrf_secret=TEST_CSRF_SECRET,
+        auth_throttle_secret=TEST_AUTH_THROTTLE_SECRET,
         session_cookie_secure=True,
         session_cookie_name=None,
         csrf_cookie_name=None,

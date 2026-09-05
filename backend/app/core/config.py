@@ -5,6 +5,7 @@ from pydantic import AnyHttpUrl, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEVELOPMENT_CSRF_SECRET = "development-only-change-this-csrf-secret"
+DEVELOPMENT_AUTH_THROTTLE_SECRET = "development-only-change-this-auth-throttle-secret"
 
 
 class Settings(BaseSettings):
@@ -31,6 +32,14 @@ class Settings(BaseSettings):
     csrf_cookie_name: str | None = Field(default=None, min_length=1)
     csrf_header_name: str = Field(default="X-CSRF-Token", min_length=1)
     csrf_token_ttl_seconds: int = Field(default=60 * 60, gt=0)
+    auth_throttle_secret: SecretStr = Field(
+        default=SecretStr(DEVELOPMENT_AUTH_THROTTLE_SECRET),
+        min_length=32,
+    )
+    auth_account_failure_limit: int = Field(default=5, gt=0)
+    auth_ip_failure_limit: int = Field(default=20, gt=0)
+    auth_throttle_window_seconds: int = Field(default=15 * 60, gt=0)
+    auth_block_seconds: int = Field(default=15 * 60, gt=0)
 
     @property
     def effective_session_cookie_name(self) -> str:
@@ -72,6 +81,19 @@ class Settings(BaseSettings):
         ):
             raise ValueError(
                 "The development CSRF secret cannot be used outside local."
+            )
+        if len(self.auth_throttle_secret.get_secret_value().encode("utf-8")) < 32:
+            raise ValueError(
+                "Authentication throttle secret must contain at least 32 bytes."
+            )
+        if (
+            self.environment != "local"
+            and self.auth_throttle_secret.get_secret_value()
+            == DEVELOPMENT_AUTH_THROTTLE_SECRET
+        ):
+            raise ValueError(
+                "The development authentication throttle secret cannot be used "
+                "outside local."
             )
         if (
             self.frontend_origin.path not in {"", "/"}

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from psycopg.errors import UniqueViolation
 from sqlalchemy import select
@@ -17,6 +18,14 @@ from app.auth.sessions import (
     create_session,
     resolve_session,
     revoke_session,
+)
+from app.auth.throttling import (
+    LoginRateLimitedError,
+    build_login_throttle_keys,
+    cleanup_expired_throttle_buckets,
+    get_login_retry_after,
+    record_login_failure,
+    reset_account_throttle,
 )
 from app.core.config import Settings
 from app.users.email import normalize_email
@@ -93,13 +102,23 @@ def login_user(
     login: LoginRequest,
     *,
     settings: Settings,
+    direct_client_host: str | None,
+    now: datetime | None = None,
 ) -> LoginResult:
     """Authenticate a password user and atomically create a new session."""
 
     email = normalize_email(login.email)
     candidate = login.password.get_secret_value()
+    throttle_keys = build_login_throttle_keys(
+        email.normalized,
+        direct_client_host,
+        settings=settings,
+    )
 
     try:
+        retry_after = get_login_retry_after(db, throttle_keys, now=now)
+        if retry_after is not None:
+            raise LoginRateLimitedError(retry_after)
         user = db.scalar(
             select(User)
             .options(selectinload(User.external_identities))
@@ -118,11 +137,27 @@ def login_user(
 
         if replacement_hash is not None:
             user.password_hash = replacement_hash
+        reset_account_throttle(db, throttle_keys.account)
         created_session = create_session(db, user.id, settings=settings)
         response = build_user_response(user)
         db.commit()
+    except LoginRateLimitedError:
+        db.rollback()
+        raise
     except InvalidCredentialsError:
         db.rollback()
+        try:
+            cleanup_expired_throttle_buckets(db, settings=settings, now=now)
+            record_login_failure(
+                db,
+                throttle_keys,
+                settings=settings,
+                now=now,
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
         raise
     except Exception:
         db.rollback()
