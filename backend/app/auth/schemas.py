@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, SecretStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from app.users.email import normalize_email
 from app.users.service import normalize_display_name
@@ -74,3 +74,11 @@ class LoginRequest(BaseModel):
     @classmethod
     def validate_email(cls, value: str) -> str:
         return normalize_email(value).canonical
+
+
+class GoogleSignInRequest(BaseModel):
+    """Transient Google ID credential accepted by the sign-in boundary."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    credential: SecretStr = Field(min_length=1)

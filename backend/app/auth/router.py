@@ -7,9 +7,14 @@ from app.auth.cookies import clear_session_cookie, set_session_cookie
 from app.auth.csrf import issue_csrf_token, set_csrf_cookie
 from app.auth.dependencies import (
     AuthenticatedUser,
+    get_google_credential_verifier,
     raise_authentication_required,
     require_csrf,
     require_current_user,
+)
+from app.auth.google import (
+    GoogleCredentialVerificationError,
+    GoogleCredentialVerifier,
 )
 from app.auth.passwords import PasswordPolicyError
 from app.auth.schemas import (
@@ -17,12 +22,16 @@ from app.auth.schemas import (
     AuthErrorDetail,
     AuthErrorResponse,
     CsrfResponse,
+    GoogleSignInRequest,
     LoginRequest,
     RegistrationRequest,
 )
 from app.auth.service import (
     AccountConflictError,
+    GoogleAccountLinkRequiredError,
+    GoogleSignInInvalidCredentialsError,
     InvalidCredentialsError,
+    google_sign_in,
     login_user,
     logout_session,
     register_user,
@@ -150,6 +159,64 @@ def login(
             detail=detail.model_dump(mode="json"),
         ) from None
 
+    _set_authenticated_cookies(
+        response,
+        result.raw_session_token,
+        settings=settings,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return result.user
+
+
+@router.post(
+    "/google",
+    response_model=UserResponse,
+    dependencies=[Depends(require_csrf)],
+    responses={
+        status.HTTP_201_CREATED: {"model": UserResponse},
+        status.HTTP_401_UNAUTHORIZED: {"model": AuthErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": AuthErrorResponse},
+    },
+)
+def google_login(
+    google_request: GoogleSignInRequest,
+    response: Response,
+    db: Annotated[DbSession, Depends(get_db_session)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    verifier: Annotated[
+        GoogleCredentialVerifier,
+        Depends(get_google_credential_verifier),
+    ],
+) -> UserResponse:
+    try:
+        result = google_sign_in(
+            db,
+            google_request,
+            verifier,
+            settings=settings,
+        )
+    except (GoogleCredentialVerificationError, GoogleSignInInvalidCredentialsError):
+        detail = AuthErrorDetail(
+            code=AuthErrorCode.INVALID_CREDENTIALS,
+            message="Google sign-in could not be completed.",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail.model_dump(mode="json"),
+        ) from None
+    except GoogleAccountLinkRequiredError:
+        detail = AuthErrorDetail(
+            code=AuthErrorCode.ACCOUNT_LINK_REQUIRED,
+            message="Sign in to the existing account before linking Google.",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=detail.model_dump(mode="json"),
+        ) from None
+
+    response.status_code = (
+        status.HTTP_201_CREATED if result.created else status.HTTP_200_OK
+    )
     _set_authenticated_cookies(
         response,
         result.raw_session_token,

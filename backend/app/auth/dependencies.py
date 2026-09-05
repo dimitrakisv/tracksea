@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session as DbSession
 
 from app.auth.csrf import CsrfValidationError, validate_csrf_request
+from app.auth.google import GoogleCredentialVerifier, GoogleIdTokenVerifier
 from app.auth.schemas import AuthErrorCode, AuthErrorDetail
 from app.auth.sessions import InvalidSessionError, resolve_session
 from app.core.config import Settings, get_settings
@@ -20,6 +21,14 @@ class AuthenticatedUser:
 
     id: UUID
     is_active: bool
+
+
+def get_google_credential_verifier(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> GoogleCredentialVerifier:
+    """Build the production Google verifier from server-owned configuration."""
+
+    return GoogleIdTokenVerifier(settings.google_client_id)
 
 
 def get_optional_current_user(
