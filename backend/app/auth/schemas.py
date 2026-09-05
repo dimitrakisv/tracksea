@@ -1,6 +1,9 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, SecretStr, field_validator
+
+from app.users.email import normalize_email
+from app.users.service import normalize_display_name
 
 
 class AuthErrorCode(StrEnum):
@@ -37,3 +40,23 @@ class CsrfResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     csrf_token: str
+
+
+class RegistrationRequest(BaseModel):
+    """Validated email-and-password registration input."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    email: str
+    password: SecretStr
+    display_name: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value).canonical
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, value: str) -> str:
+        return normalize_display_name(value)
