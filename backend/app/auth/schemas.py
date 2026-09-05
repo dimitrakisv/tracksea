@@ -60,3 +60,17 @@ class RegistrationRequest(BaseModel):
     @classmethod
     def validate_display_name(cls, value: str) -> str:
         return normalize_display_name(value)
+
+
+class LoginRequest(BaseModel):
+    """Validated password-login input."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    email: str
+    password: SecretStr
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return normalize_email(value).canonical
