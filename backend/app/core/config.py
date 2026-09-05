@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Self
 
-from pydantic import AnyHttpUrl, Field, SecretStr, model_validator
+from pydantic import AnyHttpUrl, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEVELOPMENT_CSRF_SECRET = "development-only-change-this-csrf-secret"
@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     auth_ip_failure_limit: int = Field(default=20, gt=0)
     auth_throttle_window_seconds: int = Field(default=15 * 60, gt=0)
     auth_block_seconds: int = Field(default=15 * 60, gt=0)
+    google_client_id: str | None = None
+
+    @field_validator("google_client_id", mode="before")
+    @classmethod
+    def normalize_optional_google_client_id(cls, value: object) -> object:
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized or None
+        return value
 
     @property
     def effective_session_cookie_name(self) -> str:
