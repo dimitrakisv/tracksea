@@ -37,11 +37,11 @@ def get_optional_current_user(
         resolved = resolve_session(db, raw_token, settings=settings)
     except InvalidSessionError:
         db.rollback()
-        _raise_authentication_required()
+        raise_authentication_required()
 
     if not resolved.user.is_active:
         db.rollback()
-        _raise_authentication_required()
+        raise_authentication_required()
 
     current_user = AuthenticatedUser(
         id=resolved.user.id,
@@ -60,7 +60,7 @@ async def require_current_user(
     """Require an active TrackSea user resolved from the session cookie."""
 
     if current_user is None:
-        _raise_authentication_required()
+        raise_authentication_required()
     return current_user
 
 
@@ -93,7 +93,9 @@ async def require_csrf(
         ) from None
 
 
-def _raise_authentication_required() -> NoReturn:
+def raise_authentication_required() -> NoReturn:
+    """Raise the shared generic HTTP error for unavailable authentication."""
+
     detail = AuthErrorDetail(
         code=AuthErrorCode.AUTHENTICATION_REQUIRED,
         message="Authentication is required.",

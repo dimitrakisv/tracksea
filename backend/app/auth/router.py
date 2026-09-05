@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session as DbSession
 
 from app.auth.cookies import clear_session_cookie, set_session_cookie
 from app.auth.csrf import issue_csrf_token, set_csrf_cookie
-from app.auth.dependencies import require_csrf
+from app.auth.dependencies import (
+    AuthenticatedUser,
+    raise_authentication_required,
+    require_csrf,
+    require_current_user,
+)
 from app.auth.passwords import PasswordPolicyError
 from app.auth.schemas import (
     AuthErrorCode,
@@ -26,8 +31,27 @@ from app.auth.throttling import LoginRateLimitedError
 from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.users.schemas import UserResponse
+from app.users.service import CurrentUserUnavailableError, get_current_user_profile
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    responses={status.HTTP_401_UNAUTHORIZED: {"model": AuthErrorResponse}},
+)
+def read_current_user(
+    response: Response,
+    current_user: Annotated[AuthenticatedUser, Depends(require_current_user)],
+    db: Annotated[DbSession, Depends(get_db_session)],
+) -> UserResponse:
+    try:
+        profile = get_current_user_profile(db, current_user.id)
+    except CurrentUserUnavailableError:
+        raise_authentication_required()
+    response.headers["Cache-Control"] = "no-store"
+    return profile
 
 
 @router.get("/csrf", response_model=CsrfResponse)
