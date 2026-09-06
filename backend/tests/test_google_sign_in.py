@@ -854,6 +854,54 @@ def test_concurrent_same_subject_recovers_to_one_user_and_identity(
     ) == (1, 1, 2)
 
 
+def test_google_sign_in_rechecks_subject_before_email_link_conflict(
+    google_engine: Engine,
+    google_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identity = verified_identity()
+    user_id, external_id = create_linked_user(google_engine, identity)
+    real_load = auth_service._load_google_identity_user
+    load_calls = 0
+
+    def stale_then_authoritative_load(
+        db: DbSession,
+        subject: str,
+    ) -> tuple[ExternalIdentity, User] | None:
+        nonlocal load_calls
+        load_calls += 1
+        if load_calls == 1:
+            return None
+        return real_load(db, subject)
+
+    monkeypatch.setattr(
+        auth_service,
+        "_load_google_identity_user",
+        stale_then_authoritative_load,
+    )
+
+    with DbSession(google_engine, expire_on_commit=False) as db:
+        result = google_sign_in(
+            db,
+            GoogleSignInRequest(credential=SecretStr(CREDENTIAL)),
+            FakeGoogleVerifier(identity),
+            settings=google_settings,
+        )
+
+    assert load_calls == 2
+    assert result.created is False
+    assert result.user.id == user_id
+    assert result.raw_session_token
+    assert row_counts(
+        google_engine,
+        normalize_email(identity.email).normalized,
+    ) == (1, 1, 1)
+    with DbSession(google_engine) as db:
+        external = db.get(ExternalIdentity, external_id)
+        assert external is not None
+        assert external.last_login_at is not None
+
+
 def test_concurrent_different_subjects_same_email_never_silently_link(
     google_engine: Engine,
     google_settings: Settings,

@@ -265,6 +265,16 @@ def google_sign_in(
             ) from None
 
         if _normalized_email_is_occupied(db, normalized_email.normalized):
+            existing = _load_google_identity_user(db, verified.subject)
+            if existing is not None:
+                identity, user = existing
+                return _complete_google_login(
+                    db,
+                    identity,
+                    user,
+                    settings=settings,
+                    signed_in_at=signed_in_at,
+                )
             raise GoogleAccountLinkRequiredError("Account linking is required.")
 
         return _create_google_user(
