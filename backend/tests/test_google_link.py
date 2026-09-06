@@ -471,7 +471,17 @@ async def test_linking_does_not_mutate_password_throttle_buckets(
     _, _, raw_session = create_user_session(link_engine, link_settings, email)
     with DbSession(link_engine) as db:
         before = list(
-            db.execute(select(AuthThrottleBucket).order_by(AuthThrottleBucket.id))
+            db.execute(
+                select(
+                    AuthThrottleBucket.id,
+                    AuthThrottleBucket.scope,
+                    AuthThrottleBucket.key_hash,
+                    AuthThrottleBucket.failure_count,
+                    AuthThrottleBucket.window_started_at,
+                    AuthThrottleBucket.blocked_until,
+                    AuthThrottleBucket.updated_at,
+                ).order_by(AuthThrottleBucket.id)
+            ).tuples()
         )
     app = build_app(link_engine, link_settings, FakeVerifier(identity(email)))
 
@@ -480,7 +490,17 @@ async def test_linking_does_not_mutate_password_throttle_buckets(
     assert response.status_code == 200
     with DbSession(link_engine) as db:
         after = list(
-            db.execute(select(AuthThrottleBucket).order_by(AuthThrottleBucket.id))
+            db.execute(
+                select(
+                    AuthThrottleBucket.id,
+                    AuthThrottleBucket.scope,
+                    AuthThrottleBucket.key_hash,
+                    AuthThrottleBucket.failure_count,
+                    AuthThrottleBucket.window_started_at,
+                    AuthThrottleBucket.blocked_until,
+                    AuthThrottleBucket.updated_at,
+                ).order_by(AuthThrottleBucket.id)
+            ).tuples()
         )
     assert after == before
 
