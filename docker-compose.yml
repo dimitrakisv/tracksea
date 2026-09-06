@@ -15,6 +15,7 @@ services:
     build:
       context: ./frontend
     environment:
+      DEV_API_PROXY_TARGET: http://backend:8000
       VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
