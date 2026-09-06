@@ -13,6 +13,33 @@ function jsonResponse(
 }
 
 describe("API fetch boundary", () => {
+  it.each([
+    ["GET", "/api/v1/auth/me"],
+    ["GET", "/api/v1/auth/csrf"],
+    ["POST", "/api/v1/auth/register"],
+    ["POST", "/api/v1/auth/login"],
+    ["POST", "/api/v1/auth/google"],
+    ["POST", "/api/v1/auth/google/link"],
+    ["POST", "/api/v1/auth/logout"],
+    ["PATCH", "/api/v1/users/me"],
+  ] as const)(
+    "uses cookie credentials without bearer auth for %s %s",
+    async (method, path) => {
+      const fetcher = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(jsonResponse({ ok: true }));
+      const client = createApiClient(fetcher);
+
+      await client.request(path, { method });
+
+      const [actualPath, init] = fetcher.mock.calls[0];
+      expect(actualPath).toBe(path);
+      expect(init?.method).toBe(method);
+      expect(init?.credentials).toBe("include");
+      expect(new Headers(init?.headers).has("Authorization")).toBe(false);
+    },
+  );
+
   it("uses relative paths, included credentials, JSON, and forwards cancellation", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
