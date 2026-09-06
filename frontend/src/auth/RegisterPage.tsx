@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import { AuthField, AuthStatus } from "./AuthFormElements";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 import {
   isValidationError,
   validationFieldErrors,
@@ -25,6 +26,7 @@ export function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [googleLinkRequired, setGoogleLinkRequired] = useState(false);
   const submissionPending = useRef(false);
 
   if (auth.status === "loading") {
@@ -107,6 +109,28 @@ export function RegisterPage() {
             {submitting ? "Creating account..." : "Create account"}
           </button>
         </form>
+
+        <div className="auth-divider" aria-hidden="true">
+          <span>or</span>
+        </div>
+        <GoogleSignInButton
+          mode="authenticate"
+          buttonText="signup_with"
+          onSuccess={() => navigate("/", { replace: true })}
+          onAccountLinkRequired={() => setGoogleLinkRequired(true)}
+        />
+
+        {googleLinkRequired && (
+          <div className="auth-link-guidance" role="alert">
+            <p>
+              An existing TrackSea account uses this email. Sign in to that
+              account first, then link Google.
+            </p>
+            <Link to="/sign-in" state={{ linkGoogleAfterPasswordSignIn: true }}>
+              Sign in to continue
+            </Link>
+          </div>
+        )}
 
         <p className="auth-panel__alternate">
           Already have an account? <Link to="/sign-in">Sign in</Link>

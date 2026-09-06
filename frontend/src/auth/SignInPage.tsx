@@ -1,8 +1,9 @@
 import { useRef, useState, type FormEvent } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import { AuthField, AuthStatus } from "./AuthFormElements";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 import {
   isValidationError,
   validationFieldErrors,
@@ -14,18 +15,28 @@ const SIGN_IN_FIELDS = new Set(["email", "password"] as const);
 
 export function SignInPage() {
   const auth = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [linkGoogleAfterPasswordSignIn, setLinkGoogleAfterPasswordSignIn] =
+    useState(() => hasGoogleLinkIntent(location.state));
   const submissionPending = useRef(false);
 
   if (auth.status === "loading") {
     return <AuthStatus message="Checking your session..." />;
   }
   if (auth.status === "authenticated") {
+    if (linkGoogleAfterPasswordSignIn) {
+      return (
+        <GoogleLinkContinuation
+          onSuccess={() => navigate("/", { replace: true })}
+        />
+      );
+    }
     return <Navigate to="/" replace />;
   }
   if (auth.status === "error") {
@@ -44,7 +55,9 @@ export function SignInPage() {
     setFieldErrors({});
     try {
       await auth.login({ email, password });
-      navigate("/", { replace: true });
+      if (!linkGoogleAfterPasswordSignIn) {
+        navigate("/", { replace: true });
+      }
     } catch (error) {
       const errors = validationFieldErrors(error, SIGN_IN_FIELDS);
       setFieldErrors(errors);
@@ -93,11 +106,63 @@ export function SignInPage() {
           </button>
         </form>
 
+        <div className="auth-divider" aria-hidden="true">
+          <span>or</span>
+        </div>
+        <GoogleSignInButton
+          mode="authenticate"
+          buttonText="signin_with"
+          onSuccess={() => navigate("/", { replace: true })}
+          onAccountLinkRequired={() => setLinkGoogleAfterPasswordSignIn(true)}
+        />
+
+        {linkGoogleAfterPasswordSignIn && (
+          <div className="auth-link-guidance" role="alert">
+            <p>
+              An existing TrackSea account uses this email. Sign in to your
+              existing TrackSea account. If it is a password account, you can
+              then link Google.
+            </p>
+          </div>
+        )}
+
         <p className="auth-panel__alternate">
           Need an account? <Link to="/register">Create one</Link>
         </p>
       </section>
     </main>
+  );
+}
+
+function GoogleLinkContinuation({ onSuccess }: { onSuccess(): void }) {
+  return (
+    <main className="auth-page">
+      <section className="auth-panel" aria-labelledby="link-google-title">
+        <h1 id="link-google-title">Link Google</h1>
+        <p className="auth-panel__intro">
+          Continue with Google again to provide a fresh credential for linking.
+        </p>
+        <GoogleSignInButton
+          mode="link"
+          buttonText="continue_with"
+          onSuccess={onSuccess}
+        />
+        <p className="auth-panel__alternate">
+          <Link to="/" replace>
+            Continue without linking
+          </Link>
+        </p>
+      </section>
+    </main>
+  );
+}
+
+function hasGoogleLinkIntent(state: unknown): boolean {
+  return (
+    typeof state === "object" &&
+    state !== null &&
+    "linkGoogleAfterPasswordSignIn" in state &&
+    state.linkGoogleAfterPasswordSignIn === true
   );
 }
 

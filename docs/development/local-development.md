@@ -54,6 +54,31 @@ cp .env.example .env
 
 Do not commit `.env`. It is ignored by Git and is for local values only.
 
+### Optional Google sign-in
+
+Real Google sign-in requires an OAuth 2.0 Web application client in Google
+Cloud. Add this authorized JavaScript origin to that client:
+
+```text
+http://localhost:5173
+```
+
+Set both identifiers to the same Web client ID in the local, untracked `.env`:
+
+```dotenv
+GOOGLE_CLIENT_ID=<same-web-client-id>
+VITE_GOOGLE_CLIENT_ID=<same-web-client-id>
+```
+
+The browser-visible client ID is not a secret, and this credential-callback
+flow does not use a Google client secret. Do not commit real local values.
+Google sign-in remains optional when the identifiers are empty. Restart the
+backend and frontend containers after changing them:
+
+```bash
+docker compose --env-file .env up --build -d backend frontend
+```
+
 ## Docker Startup
 
 Start the full local stack:

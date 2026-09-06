@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
@@ -60,11 +61,16 @@ export function deferred<T>(): {
   };
 }
 
-export function renderAuthApp(api: AuthApi, path: string) {
+export function renderAuthApp(
+  api: AuthApi,
+  path: string,
+  observer?: ReactNode,
+) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <AuthProvider api={api}>
         <App />
+        {observer}
       </AuthProvider>
     </MemoryRouter>,
   );
