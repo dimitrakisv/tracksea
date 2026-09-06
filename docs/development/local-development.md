@@ -1,6 +1,9 @@
 # Local Development
 
-This guide describes how to run TrackSea locally for Sprint 1 repository foundation work. It documents only the development setup that exists in this repository.
+This guide describes the general TrackSea development environment and commands
+that exist in this repository. Authentication-specific configuration, Google
+setup, workflows, and troubleshooting are documented in
+[Authentication Development](authentication.md).
 
 ## Prerequisites
 
@@ -56,28 +59,17 @@ Do not commit `.env`. It is ignored by Git and is for local values only.
 
 ### Optional Google sign-in
 
-Real Google sign-in requires an OAuth 2.0 Web application client in Google
-Cloud. Add this authorized JavaScript origin to that client:
-
-```text
-http://localhost:5173
-```
-
-Set both identifiers to the same Web client ID in the local, untracked `.env`:
-
-```dotenv
-GOOGLE_CLIENT_ID=<same-web-client-id>
-VITE_GOOGLE_CLIENT_ID=<same-web-client-id>
-```
-
-The browser-visible client ID is not a secret, and this credential-callback
-flow does not use a Google client secret. Do not commit real local values.
-Google sign-in remains optional when the identifiers are empty. Restart the
-backend and frontend containers after changing them:
+Google sign-in is optional. It requires an OAuth 2.0 Web application client
+whose authorized JavaScript origins include `http://localhost:5173`. Set
+`GOOGLE_CLIENT_ID` and `VITE_GOOGLE_CLIENT_ID` to the same Web client ID, then
+restart the application services:
 
 ```bash
 docker compose --env-file .env up --build -d backend frontend
 ```
+
+No client secret is used. Follow the complete setup and manual test in
+[Authentication Development](authentication.md#configure-google-cloud).
 
 ## Docker Startup
 
@@ -161,10 +153,17 @@ Run Alembic from the backend directory:
 cd backend
 DATABASE_URL=postgresql+psycopg://tracksea:tracksea_dev_password@127.0.0.1:5432/tracksea uv run alembic current
 DATABASE_URL=postgresql+psycopg://tracksea:tracksea_dev_password@127.0.0.1:5432/tracksea uv run alembic upgrade head
-DATABASE_URL=postgresql+psycopg://tracksea:tracksea_dev_password@127.0.0.1:5432/tracksea uv run alembic downgrade base
+DATABASE_URL=postgresql+psycopg://tracksea:tracksea_dev_password@127.0.0.1:5432/tracksea uv run alembic check
 ```
 
-The current Sprint 1 migration history is empty, so `upgrade head` and `downgrade base` are safe no-ops.
+The current authentication migration head is `011d8d16c6cf`. It creates the
+user, external identity, session, and authentication throttle tables.
+
+`uv run alembic downgrade base` is intended only for disposable migration
+validation. It drops those authentication tables and deletes their data. Do
+not run it casually against a populated development database. The isolated
+backend test harness already validates downgrade behavior without using the
+normal development database.
 
 ## Formatting
 
@@ -203,6 +202,21 @@ Run backend pytest and frontend Vitest:
 ```bash
 make test
 ```
+
+The backend suite requires a safe local PostgreSQL target and database
+create/drop privileges. It creates a temporary `tracksea_test_<uuid>` database,
+applies migrations, runs the tests, and drops the database afterward.
+
+With the full local stack running, run the explicit authentication smoke test
+through the frontend/Vite proxy from `backend/`:
+
+```bash
+uv run pytest -q integration_tests/test_auth_frontend_proxy.py
+```
+
+This explicit smoke is outside normal backend `testpaths` and is not part of
+the current GitHub Actions workflow. See
+[Authentication Development](authentication.md#automated-tests) for details.
 
 ## Frontend Production Build
 
