@@ -61,13 +61,25 @@ Then open:
 - Frontend: `http://localhost:5173`
 - Backend health: `http://localhost:8000/api/v1/health`
 
-Full setup, non-Docker commands, checks, migrations, and troubleshooting are documented in [docs/development/local-development.md](docs/development/local-development.md).
+Full setup, non-Docker commands, checks, migrations, and troubleshooting are
+documented in
+[docs/development/local-development.md](docs/development/local-development.md).
+See the
+[authentication architecture overview](docs/architecture/authentication-overview.md)
+and [authentication development guide](docs/development/authentication.md) for
+the current identity and session implementation.
 
 ## Current status
 
-**Sprint 1 — Repository Technical Foundation**
+**Sprint 2 authentication feature branch**
 
-The repository now contains the technical foundation for local development: a minimal FastAPI backend, React frontend, PostgreSQL with PostGIS, Docker Compose, Alembic, and quality tooling. TrackSea product features have not started yet.
+The `feat/authentication` branch contains email/password registration and
+sign-in, Google Identity Services sign-in, explicit Google linking, opaque
+server-side sessions, CSRF protection, login throttling, an authenticated
+profile and application shell, and comprehensive backend/frontend integration
+tests. Sprint 2 remains in progress until its final validation and review are
+complete. Observation, photo, taxonomy, identification, and Marine Life
+features are not implemented yet.
 
 ## Guiding principle
 

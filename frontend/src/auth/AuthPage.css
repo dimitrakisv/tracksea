@@ -1,0 +1,152 @@
+.auth-page,
+.auth-status {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.auth-panel {
+  width: min(100%, 28rem);
+}
+
+.auth-panel h1 {
+  margin: 0;
+  color: #0f3d4a;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.auth-panel__intro {
+  margin: 0.75rem 0 1.75rem;
+  color: #4a5650;
+}
+
+.auth-panel form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.auth-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.auth-field label {
+  font-weight: 700;
+}
+
+.auth-field input {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid #718078;
+  border-radius: 4px;
+  background: #fff;
+  color: #17201b;
+  padding: 0.625rem 0.75rem;
+}
+
+.auth-field input:focus-visible,
+.auth-panel button:focus-visible,
+.auth-panel a:focus-visible {
+  outline: 3px solid #167c80;
+  outline-offset: 2px;
+}
+
+.auth-field input[aria-invalid="true"] {
+  border-color: #a32929;
+}
+
+.auth-field__hint,
+.auth-field__error,
+.auth-error {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.auth-field__hint {
+  color: #4a5650;
+}
+
+.auth-field__error,
+.auth-error {
+  color: #8a1f1f;
+  font-weight: 600;
+}
+
+.auth-panel button {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 4px;
+  background: #0f5961;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.65rem 1rem;
+}
+
+.auth-panel button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.auth-panel__alternate {
+  margin: 1.5rem 0 0;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+  color: #66716b;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  flex: 1;
+  background: #c7cfca;
+  content: "";
+}
+
+.google-auth {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.google-auth__button {
+  min-height: 44px;
+}
+
+.google-auth p,
+.auth-link-guidance p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.google-auth [role="alert"] {
+  color: #8a1f1f;
+  font-weight: 600;
+}
+
+.auth-link-guidance {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  border-left: 3px solid #167c80;
+  padding-left: 0.875rem;
+}
+
+.auth-panel a {
+  color: #0b6267;
+  font-weight: 700;
+}
+
+.auth-status p {
+  max-width: 28rem;
+  color: #243c3c;
+  text-align: center;
+}
