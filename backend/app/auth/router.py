@@ -29,9 +29,13 @@ from app.auth.schemas import (
 from app.auth.service import (
     AccountConflictError,
     GoogleAccountLinkRequiredError,
+    GoogleLinkAuthenticationRequiredError,
+    GoogleLinkConflictError,
+    GoogleLinkInvalidCredentialsError,
     GoogleSignInInvalidCredentialsError,
     InvalidCredentialsError,
     google_sign_in,
+    link_google_identity,
     login_user,
     logout_session,
     register_user,
@@ -224,6 +228,53 @@ def google_login(
     )
     response.headers["Cache-Control"] = "no-store"
     return result.user
+
+
+@router.post(
+    "/google/link",
+    response_model=UserResponse,
+    dependencies=[Depends(require_csrf)],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {"model": AuthErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": AuthErrorResponse},
+    },
+)
+def link_google(
+    google_request: GoogleSignInRequest,
+    current_user: Annotated[AuthenticatedUser, Depends(require_current_user)],
+    db: Annotated[DbSession, Depends(get_db_session)],
+    verifier: Annotated[
+        GoogleCredentialVerifier,
+        Depends(get_google_credential_verifier),
+    ],
+) -> UserResponse:
+    try:
+        return link_google_identity(
+            db,
+            current_user.id,
+            google_request,
+            verifier,
+        )
+    except (GoogleCredentialVerificationError, GoogleLinkInvalidCredentialsError):
+        detail = AuthErrorDetail(
+            code=AuthErrorCode.INVALID_CREDENTIALS,
+            message="Google account could not be verified.",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail.model_dump(mode="json"),
+        ) from None
+    except GoogleLinkAuthenticationRequiredError:
+        raise_authentication_required()
+    except GoogleLinkConflictError:
+        detail = AuthErrorDetail(
+            code=AuthErrorCode.ACCOUNT_CONFLICT,
+            message="The Google account could not be linked.",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=detail.model_dump(mode="json"),
+        ) from None
 
 
 @router.post(

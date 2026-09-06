@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from uuid import UUID
 
 from psycopg.errors import UniqueViolation
 from sqlalchemy import select
@@ -58,6 +59,18 @@ class GoogleSignInInvalidCredentialsError(Exception):
 
 class GoogleAccountLinkRequiredError(Exception):
     """A verified Google email belongs to an existing unlinked account."""
+
+
+class GoogleLinkInvalidCredentialsError(Exception):
+    """Provider evidence is insufficient for explicit account linking."""
+
+
+class GoogleLinkConflictError(Exception):
+    """The requested identity cannot be linked to the current account."""
+
+
+class GoogleLinkAuthenticationRequiredError(Exception):
+    """The persisted current user is no longer available for linking."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -278,6 +291,120 @@ def google_sign_in(
         raise
 
 
+def link_google_identity(
+    db: DbSession,
+    current_user_id: UUID,
+    request: GoogleSignInRequest,
+    verifier: GoogleCredentialVerifier,
+) -> UserResponse:
+    """Explicitly link verified Google evidence to one password account."""
+
+    verified = verifier.verify(request.credential.get_secret_value())
+    if not verified.email_verified:
+        raise GoogleLinkInvalidCredentialsError("Google account could not be verified.")
+    try:
+        email = normalize_email(verified.email)
+    except InvalidEmailError:
+        raise GoogleLinkInvalidCredentialsError(
+            "Google account could not be verified."
+        ) from None
+
+    try:
+        user = _load_google_link_user(db, current_user_id)
+        _require_google_link_eligible_user(user, email)
+        existing = _load_google_identity(db, verified.subject)
+        if existing is not None:
+            if existing.user_id != user.id:
+                raise GoogleLinkConflictError("Google account could not be linked.")
+            response = build_user_response(user)
+            db.commit()
+            return response
+
+        user.external_identities.append(
+            ExternalIdentity(
+                provider=GOOGLE_PROVIDER,
+                subject=verified.subject,
+                email_snapshot=email.canonical,
+                last_login_at=None,
+            )
+        )
+        db.flush()
+        response = build_user_response(user)
+        db.commit()
+        return response
+    except IntegrityError as error:
+        db.rollback()
+        if not _is_external_identity_conflict(error):
+            raise
+        return _recover_google_link_race(
+            db,
+            current_user_id,
+            verified.subject,
+            email,
+            error,
+        )
+    except Exception:
+        db.rollback()
+        raise
+
+
+def _load_google_link_user(db: DbSession, current_user_id: UUID) -> User:
+    user = db.scalar(
+        select(User)
+        .options(selectinload(User.external_identities))
+        .where(User.id == current_user_id)
+        .with_for_update()
+    )
+    if user is None or not user.is_active:
+        raise GoogleLinkAuthenticationRequiredError("Authentication is required.")
+    return user
+
+
+def _require_google_link_eligible_user(
+    user: User,
+    email: NormalizedEmail,
+) -> None:
+    if user.password_hash is None or user.normalized_email != email.normalized:
+        raise GoogleLinkConflictError("Google account could not be linked.")
+
+
+def _load_google_identity(
+    db: DbSession,
+    subject: str,
+) -> ExternalIdentity | None:
+    return db.scalar(
+        select(ExternalIdentity)
+        .where(
+            ExternalIdentity.provider == GOOGLE_PROVIDER,
+            ExternalIdentity.subject == subject,
+        )
+        .with_for_update()
+    )
+
+
+def _recover_google_link_race(
+    db: DbSession,
+    current_user_id: UUID,
+    subject: str,
+    email: NormalizedEmail,
+    original_error: IntegrityError,
+) -> UserResponse:
+    try:
+        user = _load_google_link_user(db, current_user_id)
+        _require_google_link_eligible_user(user, email)
+        existing = _load_google_identity(db, subject)
+        if existing is None:
+            raise original_error
+        if existing.user_id != user.id:
+            raise GoogleLinkConflictError("Google account could not be linked.")
+        response = build_user_response(user)
+        db.commit()
+        return response
+    except Exception:
+        db.rollback()
+        raise
+
+
 def _load_google_identity_user(
     db: DbSession,
     subject: str,
@@ -418,6 +545,13 @@ def _is_expected_google_race(error: IntegrityError) -> bool:
         NORMALIZED_EMAIL_CONSTRAINT,
         EXTERNAL_IDENTITY_CONSTRAINT,
     }
+
+
+def _is_external_identity_conflict(error: IntegrityError) -> bool:
+    return (
+        isinstance(error.orig, UniqueViolation)
+        and error.orig.diag.constraint_name == EXTERNAL_IDENTITY_CONSTRAINT
+    )
 
 
 def _as_utc(value: datetime | None) -> datetime:
