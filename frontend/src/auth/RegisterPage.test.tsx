@@ -81,7 +81,7 @@ describe("RegisterPage", () => {
 
     pending.resolve(TEST_USER);
     expect(
-      await screen.findByText("Technical foundation is running."),
+      await screen.findByRole("heading", { name: "Welcome to TrackSea" }),
     ).toBeInTheDocument();
     expect(JSON.stringify(TEST_USER)).not.toContain(PASSWORD);
     expect(localStorage.length).toBe(0);
@@ -95,7 +95,7 @@ describe("RegisterPage", () => {
     );
 
     expect(
-      await screen.findByText("Technical foundation is running."),
+      await screen.findByRole("heading", { name: "Welcome to TrackSea" }),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
   });

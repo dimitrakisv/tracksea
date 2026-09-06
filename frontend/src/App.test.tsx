@@ -18,6 +18,14 @@ describe("App routes", () => {
     ).toBeInTheDocument();
   });
 
+  it("redirects an anonymous profile visit to sign-in", async () => {
+    renderAuthApp(fakeAuthApi(), "/profile");
+
+    expect(
+      await screen.findByRole("heading", { name: "Sign in to TrackSea" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders the protected root for an authenticated user", async () => {
     renderAuthApp(
       fakeAuthApi({
@@ -27,11 +35,23 @@ describe("App routes", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { level: 1, name: "TrackSea" }),
+      await screen.findByRole("heading", { name: "Welcome to TrackSea" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeVisible();
+  });
+
+  it("renders the protected profile for an authenticated user", async () => {
+    renderAuthApp(
+      fakeAuthApi({
+        getCurrentUser: vi.fn().mockResolvedValue(TEST_USER),
+      }),
+      "/profile",
+    );
+
     expect(
-      screen.getByText("Technical foundation is running."),
+      await screen.findByRole("heading", { level: 1, name: "Profile" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeVisible();
   });
 
   it("does not expose protected content while startup is loading", () => {
@@ -48,7 +68,10 @@ describe("App routes", () => {
       "Checking your session",
     );
     expect(
-      screen.queryByText("Technical foundation is running."),
+      screen.queryByRole("navigation", { name: "Primary" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Welcome to TrackSea" }),
     ).not.toBeInTheDocument();
   });
 
@@ -64,7 +87,10 @@ describe("App routes", () => {
       "Unable to determine the current session.",
     );
     expect(
-      screen.queryByText("Technical foundation is running."),
+      screen.queryByRole("navigation", { name: "Primary" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Welcome to TrackSea" }),
     ).not.toBeInTheDocument();
     expect(document.body).not.toHaveTextContent("private detail");
   });

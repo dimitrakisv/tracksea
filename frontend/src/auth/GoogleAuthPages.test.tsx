@@ -116,7 +116,7 @@ describe("Google authentication pages", () => {
     act(() => callback({ credential: "registration-google-credential" }));
 
     expect(
-      await screen.findByText("Technical foundation is running."),
+      await screen.findByRole("heading", { name: "Welcome to TrackSea" }),
     ).toBeInTheDocument();
     expect(googleSignIn).toHaveBeenCalledWith({
       credential: "registration-google-credential",
@@ -184,7 +184,7 @@ describe("Google authentication pages", () => {
     act(() => callback({ credential: "sign-in-google-credential" }));
 
     expect(
-      await screen.findByText("Technical foundation is running."),
+      await screen.findByRole("heading", { name: "Welcome to TrackSea" }),
     ).toBeInTheDocument();
     expect(googleSignIn).toHaveBeenCalledOnce();
   });
@@ -228,7 +228,7 @@ describe("Google authentication pages", () => {
 
     act(() => callback({ credential: secondCredential }));
     expect(
-      await screen.findByText("Technical foundation is running."),
+      await screen.findByRole("heading", { name: "Welcome to TrackSea" }),
     ).toBeInTheDocument();
     expect(googleSignIn).toHaveBeenCalledWith({ credential: firstCredential });
     expect(linkGoogle).toHaveBeenCalledOnce();
@@ -271,7 +271,7 @@ describe("Google authentication pages", () => {
     fireEvent.click(skip);
 
     expect(
-      await screen.findByText("Technical foundation is running."),
+      await screen.findByRole("heading", { name: "Welcome to TrackSea" }),
     ).toBeInTheDocument();
     expect(linkGoogle).not.toHaveBeenCalled();
   });
