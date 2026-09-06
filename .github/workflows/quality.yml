@@ -13,6 +13,25 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql+psycopg://tracksea:tracksea_ci_password@127.0.0.1:5432/tracksea_ci
+      FRONTEND_ORIGIN: http://localhost:5173
+      CSRF_SECRET: ci-only-csrf-secret-not-for-production-2026
+      AUTH_THROTTLE_SECRET: ci-only-throttle-secret-not-for-production-2026
+    services:
+      postgres:
+        image: postgis/postgis:16-3.5
+        env:
+          POSTGRES_DB: tracksea_ci
+          POSTGRES_USER: tracksea
+          POSTGRES_PASSWORD: tracksea_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tracksea -d tracksea_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -32,6 +51,23 @@ jobs:
         working-directory: backend
         run: uv sync --locked
 
+      - name: Verify PostgreSQL and PostGIS
+        working-directory: backend
+        run: >-
+          uv run python -c "from sqlalchemy import create_engine, text;
+          from app.core.config import Settings;
+          engine = create_engine(Settings().database_url);
+          connection = engine.connect();
+          print(connection.scalar(text('SELECT postgis_version()')));
+          connection.close(); engine.dispose()"
+
+      - name: Upgrade and verify database migrations
+        working-directory: backend
+        run: |
+          uv run alembic upgrade head
+          uv run alembic current
+          uv run alembic check
+
       - name: Check backend formatting
         working-directory: backend
         run: uv run ruff format --check .
@@ -47,6 +83,18 @@ jobs:
       - name: Test backend
         working-directory: backend
         run: uv run pytest
+
+      - name: Verify test database cleanup
+        working-directory: backend
+        run: >-
+          uv run python -c "from sqlalchemy import create_engine, text;
+          from app.core.config import Settings;
+          engine = create_engine(Settings().database_url);
+          connection = engine.connect();
+          count = connection.scalar(text(\"SELECT count(*) FROM pg_database
+          WHERE datname LIKE 'tracksea_test_%'\"));
+          connection.close(); engine.dispose();
+          assert count == 0, f'{count} temporary test database(s) remain'"
 
   frontend:
     name: Frontend
